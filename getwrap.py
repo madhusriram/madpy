@@ -6,7 +6,7 @@
 __AUTHOR__ = "Madhukar Sriramu"
 __EMAIL__ = "madhusirmv@gmail.com"
 __DATA__ = "2016/08/01"
-__ORIGINAL AUTHOR__ = "Prakhar Srivastav"
+__ORIGINAL_AUTHOR__ = "Prakhar Srivastav"
 __SOURCE__ = "https://github.com/prakhar1989/gettup/blob/master/gett.py"
 __version__ = "1"
 
@@ -17,6 +17,7 @@ import json
 import argparse
 import signal
 import getpass
+import zipfile
 
 LOGIN_URL = "https://open.ge.tt/1/users/login"
 SHARE_URL = "https://open.ge.tt/1/shares/create?accesstoken="
@@ -130,7 +131,7 @@ def upload_file(f, share, title):
     """
     accesstoken = get_access_token()
     file_url = "http://open.ge.tt/1/files/%s/create?accesstoken=%s" % (share, accesstoken)
-    log("Setting up a file name...")
+    log("+ Setting up a file name on the share...")
     r = requests.post(file_url, data=json.dumps({'filename': f}))
     if r.status_code != 200:
         refresh_access_token()
@@ -143,7 +144,7 @@ def upload_file(f, share, title):
     else:
         print "Error: " + r.json().get('error')
 
-def bulk_upload(files, sharename=None, title=None):
+def bulk_upload(files, zipfiles, sharename=None, title=None):
     """ What do I need to upload?
         the API key, the user name, and the password
         :param files: list of files to be uploaded
@@ -151,11 +152,24 @@ def bulk_upload(files, sharename=None, title=None):
         :param title: title of the new share
     """
     share = sharename or create_share()
-    # Upload files iteratively
+    # Archive name
+    if zipfiles:
+        archive = raw_input("Choose archive name to be stored as with a .zip extension: ")
+        ziph = zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED)
+
+    # Upload files iteratively or add to the archive
     for f in files:
+        if zipfiles:
+            print "+ Archiving " + f
+            ziph.write(f)
+            continue
         print "Uploading file: " + f
         upload_file(f, share, title)
         log("-------------------------------------------------")
+
+    if zipfiles: 
+        print "Uploading archive: " + archive
+        upload_file(archive, share, title)
 
 def main():
     """ Start here! """
@@ -167,18 +181,22 @@ def main():
     
     # File uploads
     file_uploads = parser.add_argument_group("files")
-    file_uploads = parser.add_argument("--files", 
+    file_uploads.add_argument("-f", "--files", 
                                     metavar="Files", 
                                     nargs="*", 
                                     help="list of files you want to upload")
-    file_uploads = parser.add_argument("-s", "--share", metavar="share_name", 
+    file_uploads.add_argument("-s", "--share", metavar="share_name", 
                                     help="upload files to a particular share")
-    file_uploads = parser.add_argument("-t", "--title", metavar="title",
+    file_uploads.add_argument("-t", "--title", metavar="title",
                                     help="title for the new share")
+    file_uploads.add_argument("-z", action="store_true",
+                                    help="flag to zip files or not")
     args = parser.parse_args()
 
+    zipfiles = True if args.z else False
+
     if args.files:
-        bulk_upload(args.files, sharename=args.share, title=args.title)
+        bulk_upload(args.files, zipfiles, sharename=args.share, title=args.title)
 
     if len(sys.argv) == 1:
         parser.print_help()

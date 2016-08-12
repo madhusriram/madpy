@@ -1,7 +1,0 @@
-madpy
-=====
-
-My codes
-
-#Readme
-

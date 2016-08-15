@@ -17,6 +17,8 @@ monikers = {'windies'       : 'West Indies',
             'black caps'    : 'New Zealand',
             }
 
+monikers_rev = {v: k for k,v in monikers.items()}
+
 cric_url = 'http://www.espncricinfo.com/ci/engine/match/index.html?view=live'
 cric_nations = 'http://www.espncricinfo.com/ci/content/site/cricket_squads_teams/index.html'
 # List of cricket playing nations
@@ -165,6 +167,9 @@ def compute():
                   "wonderful game yet. Instead you should be interested in these "\
 				  "countries:"
 			for index, country in enumerate(espn_list, start = 1):
+				# India (Men in Blue)
+				moniker = monikers_rev.get(country, "")
+				country = country + " (%s)" % moniker.title()
 				print "%d: " % index + country
 			sys.exit(1)
 

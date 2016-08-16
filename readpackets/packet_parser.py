@@ -3,6 +3,7 @@
 import socket
 import struct
 import sys
+import re
 
 # Monitor all Ethernet packets
 # See <linux/if_ether.h>
@@ -18,6 +19,13 @@ IP_H_LEN = 20
 # TCP header length
 TCP_H_LEN = 20 
 
+method_str = '(GET|POST|HEAD|TRACE|CONNECT|PUT|DELETE|PATCH)'
+path_str = '(\/.*)'
+version_str = '(HTTP\/1\.[0-1])'
+
+req_re = '%s %s %s' %(method_str, path_str, version_str)
+host_re = "^Host:\s(.*)$"
+useragent_re = "^User-Agent:\s(.*\/)$"
 
 def parse_payload(payload):
     """
@@ -25,8 +33,23 @@ def parse_payload(payload):
     Search for this pattern:
     HTTP methods: [GET, POST, HEAD, TRACE, CONNECT, PUT, DELETE, CONNECT, PATCH]
     """
-   
+    req = re.search(req_re, payload)
+    host = re.search(host_re, payload)
+    useragent = re.search(useragent_re, payload)
 
+    try:
+        method = req.group(1)
+        path  = req.group(2)
+        ver = req.group(3)
+        host = host.group(1)
+        useragent = useragent.group(1)
+        print "Method: %s" %method
+        print "Path: %s" %path
+        print "Version: %s" %ver
+        print "Host: %s" %host
+        print "UA: %s" %useragent
+    except:
+        pass
 
 def tcp_parse(local_ip, packet, ip_hdr_len, addr):
     """
@@ -49,7 +72,7 @@ def tcp_parse(local_ip, packet, ip_hdr_len, addr):
     
         header_size = tcph_len + ip_hdr_len + ETH_H_LEN
         data_size = len(packet) - header_size
-        data = packet[data_size:]
+        data = packet[header_size:]
         if data_size != 0 and local_ip == addr[1]:
             parse_payload(data)
 

@@ -12,6 +12,6 @@ Usage:
 Usage: getwrap.py [-h] [-f [Files [Files ...]]] [-s share\_name] [-t title] [-z]
 
 where,
-	+ '-f' : list of files you want to upload
-	+ '-s' : upload files to a particular share
-	+ '-z' : flag to zip files
+- '-f' : list of files you want to upload
+- '-s' : upload files to a particular share
+- '-z' : flag to zip files

@@ -5,7 +5,7 @@
 
 __AUTHOR__ = "Madhukar Sriramu"
 __EMAIL__ = "madhusirmv@gmail.com"
-__DATA__ = "2016/08/01"
+__DATE__ = "2016/08/01"
 __ORIGINAL_AUTHOR__ = "Prakhar Srivastav"
 __SOURCE__ = "https://github.com/prakhar1989/gettup/blob/master/gett.py"
 __version__ = "1"
@@ -18,6 +18,7 @@ import argparse
 import signal
 import getpass
 import zipfile
+import time
 
 LOGIN_URL = "https://open.ge.tt/1/users/login"
 SHARE_URL = "https://open.ge.tt/1/shares/create?accesstoken="
@@ -49,7 +50,6 @@ def read_config(token):
     config = cp.RawConfigParser()
     if not config.read(file_location) or not config.has_option('TOKENS', token) \
             or not config.has_section('TOKENS'):
-        print "Entered"
         return None
 
     return config.get('TOKENS', token)
@@ -89,6 +89,61 @@ def setup_tokens():
     write_config({"accesstoken": access_token, "refreshtoken": refresh_token})
     return access_token
 
+def conv_time(epoch):
+	"""
+	convert epoch to locatime
+	"""
+	if epoch:
+		return time.strftime("%m-%d-%Y %H:%M:%S", time.localtime(epoch))
+
+def get_shares():
+	"""
+	"""
+	access_token = get_access_token()
+	get_url = "http://open.ge.tt/1/shares?accesstoken=%s" %access_token
+	r = requests.get(get_url)
+	
+	if r.status_code != 200:
+		refresh_access_token()
+		get_shares()
+
+	shares = r.json()
+	if not shares:
+		print "You do not have any shares"
+	else:
+		for share in shares:
+			print "%d files in share '%s' accessible at URL: %s and created on %s " %\
+			(len(share['files']),share['sharename'],share['getturl'],conv_time(share['created']))
+
+def sizer(nbytes):
+	"""
+	convert bytes to appropriate human readable format
+	"""
+	for (exp, val) in ((9, 'GB'),(6, 'MB'),(3, 'KB'),(0, 'B')):
+		if nbytes >= 10 ** exp:
+			break
+	size_str = "%.2f%s" %(float(nbytes)/(10 ** exp), val)
+	return size_str
+
+def get_info(share_id):
+	"""
+	Gets information about a share
+	"""
+	log("Getting share info...")
+	get_info_url = "http://open.ge.tt/1/shares/%s" %share_id
+	r = requests.get(get_info_url)
+	share = r.json()
+	
+	if r.status_code != 200:
+		print "Share %s not found" %share
+		return
+	print "Share at URL: %s" %share['getturl']
+	print "Share created at %s" %conv_time(share['created'])
+	print "Share owner: %s" %share['fullname']
+	print "Files in share: "
+	for file in share['files']:
+		print "Filename: %s, size: %s, URL: %s" %(file['filename'],sizer(file['size']),file['getturl'])
+
 def create_share(title=None):
     """ Create a new share """
     access_token = get_access_token()
@@ -99,10 +154,15 @@ def create_share(title=None):
         r = requests.post(SHARE_URL + access_token)
    
     if r.status_code != 200:
-        # don't know what to do if fails
-        print "in here"
+        refresh_access_token()
+        create_share()
 
     return r.json().get('sharename')
+
+def destroy_share(sharename):
+	"""
+	"""
+	pass
 
 def refresh_access_token():
     """ 
@@ -111,12 +171,12 @@ def refresh_access_token():
     """
     log("Refreshing the access token...")
     refreshtoken = read_config("refreshtoken")
-    r = requests.post(LOGIN_URL, data=json.dumps({'refresh-token': refreshtoken}))
+    r = requests.post(LOGIN_URL, data=json.dumps({'refreshtoken': refreshtoken}))
     
     if r.status_code != 200:
         print "Error: cannot fetch refresh token. Try deleting ~/.gett.cfg file and retrying"
         sys.exit(0)
-
+	
     access_token = r.json.get('accesstoken')
     refresh_token = r.json.get('refreshtoken')
 
@@ -140,7 +200,7 @@ def upload_file(f, share, title):
     r = requests.post(file_url, data=json.dumps({'filename': f}))
     if r.status_code != 200:
         refresh_access_token()
-        return upload_file
+        return upload_file(f, share)
     get_url = r.json().get("getturl")
     post_url = r.json()['upload']['posturl']
     r = requests.post(post_url, files={'filename': open(f, 'rb')})
@@ -195,15 +255,39 @@ def main():
                                     help="upload files to a particular share")
     file_uploads.add_argument("-t", "--title", metavar="title",
                                     help="title for the new share")
-    file_uploads.add_argument("-z", action="store_true",
-                                    help="flag to zip files or not")
+    file_uploads.add_argument("-z", "--zipper", action="store_true",
+			help="flag to zip files or not")
+
+    share_group = parser.add_argument_group("share")
+    share_group.add_argument("-d", "--delete", metavar="share_id", nargs='+',
+									help="delete a share and all files in it")
+    share_group.add_argument("-i", "--share_info", metavar="share_id",
+									help="print information about a share")
+    share_group.add_argument("-l", "--list", action="store_true",
+									help="print all shares for an account")
+
     args = parser.parse_args()
 
-    zipfiles = True if args.z else False
+	# Delete shares
+    if args.delete:
+	    for sharename in args.delete:
+		    destroy_share(sharename)
+	
+	# Get all shares for an account
+    if args.list:
+		get_shares()
 
+	# Print information about the share
+    if args.share_info:
+        get_info(args.share_info)
+
+    zipfiles = True if args.zipper else False
+	
+	# Upload files
     if args.files:
         bulk_upload(args.files, zipfiles, sharename=args.share, title=args.title)
 
+	# No command line arguments then print help
     if len(sys.argv) == 1:
         parser.print_help()
 

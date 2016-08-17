@@ -1,6 +1,6 @@
 # Introduction
 --------------
-Command line utility to add to ge.tt
+Command line utility for ge.tt
 
 Goal:
 ------

@@ -30,3 +30,10 @@ How to test on your sandbox?
 + Google App Engine SDK has the dev\_appserver.py script that starts a web 
   server at port 8080 on the localhost
 + All testing can be done using the browser pointing at http://localhost:8080
+
+How to clear the cloud DataStore?
+---------------------------------
+To clear the development datastore do this:
+Maddy-2:blog Maddy$ dev\_appserver.py --clear\_datastore=yes .
+(OR)
+http://localhost:8000/datastore and delete individual model elements from the google GUI

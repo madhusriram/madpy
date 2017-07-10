@@ -71,4 +71,12 @@ The rules for domain matching are:
  - 
 
 Can I have a webserver at reddit.com that'll set a cookie to google.com?
-Answer is NO! You may only set cookies to that domain or higher. For example, if the website is www.reddit.com the valid domains are www.reddit.com ; .reddit.com and not bar.reddit.com 
+Answer is NO! You may only set cookies to that domain or higher. For example, if the website is www.reddit.com the valid domains are www.reddit.com ; .reddit.com and not bar.reddit.com
+
+#### Rainbow Tables
+-------------------
+Passwords are hashed, but are they really safe? _NO!!_
+
+Rainbow table: Precomputed hashes 
+
+Note: bcrypt is the best way to hash passwords
